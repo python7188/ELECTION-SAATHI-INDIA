@@ -13,10 +13,8 @@ interface ImportMetaEnv {
   readonly VITE_GOOGLE_CLOUD_PROJECT: string;
   /** Google Maps JavaScript API key */
   readonly VITE_GOOGLE_MAPS_API_KEY: string;
-  /** Google Calendar OAuth client ID */
-  readonly VITE_GOOGLE_CALENDAR_CLIENT_ID: string;
-  /** Google Calendar API key (for read-only operations) */
-  readonly VITE_GOOGLE_CALENDAR_API_KEY: string;
+  /** Google Cloud Translation API key */
+  readonly VITE_GOOGLE_TRANSLATION_API_KEY?: string;
   /** Application environment */
   readonly VITE_APP_ENV: 'development' | 'production' | 'test';
 }

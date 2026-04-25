@@ -25,7 +25,7 @@ function createInitialState(): AppState {
     selectedElectionType: null,
     isCoachOpen: false,
     coachMessages: [],
-    isCalendarAuthed: false,
+    isTranslationLoaded: false,
     isMapsLoaded: false,
     isReducedMotion: prefersReducedMotion(),
     is3DEnabled: true,

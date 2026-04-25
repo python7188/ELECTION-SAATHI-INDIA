@@ -2,7 +2,7 @@
  * Election Coach Panel — Conversational UI powered by Gemini AI.
  *
  * Provides an interactive chat interface for election guidance,
- * with tool-call routing to Calendar and Maps services.
+ * with tool-call routing to Translation and Maps services.
  *
  * @module ui/ElectionCoachPanel
  */

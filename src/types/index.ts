@@ -164,25 +164,22 @@ export interface ToolCallResult {
   readonly status: 'success' | 'error';
 }
 
-/** Google Calendar event creation request. */
-export interface CalendarEventRequest {
-  readonly summary: string;
-  readonly description: string;
-  readonly startDateTime: string;
-  readonly endDateTime: string;
-  readonly timeZone: string;
-  readonly reminders: {
-    readonly useDefault: boolean;
-    readonly overrides?: readonly { method: string; minutes: number }[];
-  };
+/** Google Cloud Translation request. */
+export interface TranslationRequest {
+  readonly q: string | string[];
+  readonly target: string;
+  readonly source?: string;
+  readonly format?: 'text' | 'html';
 }
 
-/** Google Calendar event creation response. */
-export interface CalendarEventResponse {
-  readonly id: string;
-  readonly htmlLink: string;
-  readonly status: 'confirmed' | 'tentative' | 'cancelled';
-  readonly summary: string;
+/** Google Cloud Translation response. */
+export interface TranslationResponse {
+  readonly data: {
+    readonly translations: {
+      readonly translatedText: string;
+      readonly detectedSourceLanguage?: string;
+    }[];
+  };
 }
 
 /** Google Maps polling location result. */
@@ -206,7 +203,7 @@ export interface AppState {
   selectedElectionType: ElectionCategory | null;
   isCoachOpen: boolean;
   coachMessages: CoachMessage[];
-  isCalendarAuthed: boolean;
+  isTranslationLoaded: boolean;
   isMapsLoaded: boolean;
   isReducedMotion: boolean;
   is3DEnabled: boolean;

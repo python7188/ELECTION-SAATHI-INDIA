@@ -8,7 +8,6 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ElectionCoachService, ELECTION_TOOLS } from '../../src/services/gemini';
-import { ElectionCalendarService } from '../../src/services/calendar';
 import { ElectionMapsService } from '../../src/services/maps';
 
 /* ---- Gemini Service ---- */
@@ -137,61 +136,6 @@ describe('ELECTION_TOOLS', () => {
     const found = ELECTION_TOOLS.find((t) => t.name === 'get_election_timeline');
     expect(found).toBeDefined();
     expect(found?.parameters.properties['election_type'].enum).toContain('LOK_SABHA');
-  });
-});
-
-/* ---- Calendar Service ---- */
-describe('ElectionCalendarService', () => {
-  let calendar: ElectionCalendarService;
-
-  beforeEach(() => {
-    calendar = new ElectionCalendarService();
-  });
-
-  it('reports unconfigured when no credentials', () => {
-    expect(calendar.isConfigured()).toBe(false);
-  });
-
-  it('reports not authenticated by default', () => {
-    expect(calendar.isAuthenticated()).toBe(false);
-  });
-
-  it('generates valid calendar deep link', () => {
-    const link = calendar.generateCalendarLink(
-      'Voter Registration Deadline',
-      '2026-01-15',
-      'Last day to register for the upcoming election',
-    );
-    expect(link).toContain('calendar.google.com');
-    expect(link).toContain('TEMPLATE');
-    expect(link).toContain('20260115');
-  });
-
-  it('sanitizes calendar link inputs', () => {
-    const link = calendar.generateCalendarLink(
-      '<script>alert(1)</script>',
-      '2026-01-15',
-      'Test',
-    );
-    expect(link).not.toContain('<script>');
-  });
-
-  it('returns auth error when creating event without auth', async () => {
-    const result = await calendar.createEvent({
-      summary: 'Test',
-      description: 'Test event',
-      startDateTime: '2026-01-15T09:00:00+05:30',
-      endDateTime: '2026-01-15T10:00:00+05:30',
-      timeZone: 'Asia/Kolkata',
-      reminders: { useDefault: true },
-    });
-    expect(result.ok).toBe(false);
-    expect(result.status).toBe(401);
-  });
-
-  it('sign out clears tokens', () => {
-    calendar.signOut();
-    expect(calendar.isAuthenticated()).toBe(false);
   });
 });
 

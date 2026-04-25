@@ -14,7 +14,6 @@ import { ELECTION_TYPES } from '../../src/data/election-types';
 import { ELECTION_FAQ, searchFaq } from '../../src/data/faq';
 import { getAllTimelineEvents, getDeadlineEvents } from '../../src/data/timeline';
 import { ElectionCoachService, ELECTION_TOOLS } from '../../src/services/gemini';
-import { ElectionCalendarService } from '../../src/services/calendar';
 import { ElectionMapsService } from '../../src/services/maps';
 import {
   JourneyStageId,
@@ -107,38 +106,6 @@ describe('Election Coach — Tool Routing', () => {
     expect(toolNames).toContain('lookup_election_faq');       // FAQ
     expect(toolNames).toContain('check_voter_eligibility');   // Eligibility
     expect(toolNames).toContain('get_election_timeline');     // Timeline
-  });
-});
-
-describe('Google Calendar — Reminder Flow', () => {
-  let calendar: ElectionCalendarService;
-
-  beforeEach(() => {
-    calendar = new ElectionCalendarService();
-  });
-
-  it('generates valid deep links for election reminders', () => {
-    const link = calendar.generateCalendarLink(
-      'Lok Sabha Polling Day',
-      '2026-04-15',
-      'Cast your vote! Carry your Voter ID.',
-    );
-    expect(link).toContain('calendar.google.com');
-    expect(link).toContain('20260415');
-  });
-
-  it('handles multiple reminder types', () => {
-    const reminders = [
-      { title: 'Registration Deadline', date: '2026-01-25' },
-      { title: 'Nomination Filing', date: '2026-03-01' },
-      { title: 'Polling Day', date: '2026-04-15' },
-      { title: 'Counting Day', date: '2026-04-18' },
-    ];
-
-    reminders.forEach((r) => {
-      const link = calendar.generateCalendarLink(r.title, r.date, 'Election reminder');
-      expect(link).toContain('calendar.google.com');
-    });
   });
 });
 

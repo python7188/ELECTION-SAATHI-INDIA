@@ -21,26 +21,22 @@ import { ElectionCache, makeCacheKey } from '../utils/cache';
 /** Tool schemas that Gemini can invoke during election coaching. */
 export const ELECTION_TOOLS: readonly GeminiToolDeclaration[] = [
   {
-    name: 'create_election_reminder',
+    name: 'translate_text',
     description:
-      'Create a Google Calendar reminder for an election-related deadline such as voter registration cutoff, polling day, or document preparation.',
+      'Translate English text to a local Indian language like Hindi, Telugu, or Tamil.',
     parameters: {
       type: 'object',
       properties: {
-        event_title: {
+        text: {
           type: 'string',
-          description: 'Title of the calendar event, e.g. "Voter Registration Deadline"',
+          description: 'The text to translate',
         },
-        event_date: {
+        targetLang: {
           type: 'string',
-          description: 'Date in ISO 8601 format, e.g. "2026-01-15"',
-        },
-        event_description: {
-          type: 'string',
-          description: 'Detailed description of what the voter needs to do',
+          description: 'The ISO code for the target language, e.g. hi, te, ta',
         },
       },
-      required: ['event_title', 'event_date'],
+      required: ['text', 'targetLang'],
     },
   },
   {
@@ -151,7 +147,7 @@ Your role:
 - Help voters understand every type of Indian election: Lok Sabha, Rajya Sabha, State Assembly, Panchayat, Municipal, and By-elections.
 - Guide voters through eligibility checks, registration, candidate research, voting methods, timelines, polling-day procedures, and post-vote engagement.
 - Provide accurate, factual information based on Election Commission of India (ECI) guidelines.
-- Use the provided tools to create calendar reminders, find polling locations, search FAQs, check eligibility, and retrieve timelines.
+- Use the provided tools to translate text, find polling locations, search FAQs, check eligibility, and retrieve timelines.
 - Always respond in a friendly, clear, and educational manner.
 - If unsure, direct voters to official ECI resources (eci.gov.in, nvsp.in, Voter Helpline 1950).
 
@@ -314,7 +310,7 @@ export class ElectionCoachService {
     args: Record<string, unknown>;
   }): ToolCallResult {
     // Tool calls are dispatched to the appropriate service
-    // Actual implementation connects to Calendar, Maps, and FAQ modules
+    // Actual implementation connects to Translation, Maps, and FAQ modules
     return {
       toolName: functionCall.name,
       args: functionCall.args,

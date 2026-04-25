@@ -14,7 +14,7 @@
 import { ElectionScene } from './scene/ElectionScene';
 import { AccessibleFallback } from './ui/AccessibleFallback';
 import { ElectionCoachPanel } from './ui/ElectionCoachPanel';
-import { CalendarWidget } from './ui/CalendarWidget';
+import { TranslationWidget } from './ui/TranslationWidget';
 import { MapsWidget } from './ui/MapsWidget';
 import { store } from './state/store';
 import { announce, onReducedMotionChange, prefersReducedMotion } from './utils/a11y';
@@ -28,7 +28,7 @@ let scene: ElectionScene | null = null;
  * Initialises all UI layers in priority order:
  * 1. Accessible fallback (always first — ensures a11y from the start)
  * 2. 3D scene (progressive enhancement)
- * 3. Coach panel, Calendar, Maps widgets
+ * 3. Coach panel, Translation, Maps widgets
  *
  * @throws Error if the #app root element is missing.
  */
@@ -72,12 +72,12 @@ function bootstrap(): void {
     console.warn('[ElectionSaathi] Coach panel failed:', e);
   }
 
-  // 4. Calendar widget
+  // 4. Translation widget
   try {
-    new CalendarWidget();
+    new TranslationWidget();
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[ElectionSaathi] Calendar widget failed:', e);
+    console.warn('[ElectionSaathi] Translation widget failed:', e);
   }
 
   // 5. Maps widget
