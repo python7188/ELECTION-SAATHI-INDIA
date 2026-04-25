@@ -23,8 +23,8 @@ jobs:
         run: npm run lint
       - name: Run Typecheck
         run: npm run typecheck
-      - name: Run Unit & Integration Tests
-        run: npm run test
+      - name: Run Unit & Integration Tests (with Coverage)
+        run: npm run test:coverage
 
   e2e:
     name: Playwright E2E Tests
