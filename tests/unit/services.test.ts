@@ -20,8 +20,10 @@ describe('ElectionCoachService', () => {
 
   it('reports configured when API key is mocked', () => {
     const originalApiKey = coach['apiKey'];
+    // @ts-ignore: overriding readonly property for test
     coach['apiKey'] = 'fake_api_key';
     expect(coach.isConfigured()).toBe(true);
+    // @ts-ignore: overriding readonly property for test
     coach['apiKey'] = originalApiKey;
   });
 
@@ -153,8 +155,10 @@ describe('ElectionMapsService', () => {
   it('reports configured when API key is mocked', () => {
     // Override the API key for this test
     const originalApiKey = maps['apiKey'];
+    // @ts-ignore: overriding readonly property for test
     maps['apiKey'] = 'fake_api_key';
     expect(maps.isConfigured()).toBe(true);
+    // @ts-ignore: overriding readonly property for test
     maps['apiKey'] = originalApiKey;
   });
 
