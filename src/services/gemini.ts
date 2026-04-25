@@ -173,7 +173,7 @@ export class ElectionCoachService {
   private conversationHistory: CoachMessage[];
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+    this.apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GEMINI_KEY || '';
     this.model = import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-flash';
     this.client = new SafeApiClient({
       baseUrl: 'https://generativelanguage.googleapis.com',

@@ -33,7 +33,7 @@ export class ElectionMapsService {
   private isLoaded: boolean;
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+    this.apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_KEY || '';
     this.cache = new ElectionCache<PollingLocation[]>({
       defaultTtlMs: 30 * 60 * 1000, // 30 minutes
       maxEntries: 20,
@@ -174,10 +174,19 @@ export class ElectionMapsService {
           status !== google.maps.places.PlacesServiceStatus.OK ||
           !results
         ) {
+          let errorMsg = 'No locations found. Try a different search.';
+          if (status === google.maps.places.PlacesServiceStatus.REQUEST_DENIED) {
+            errorMsg = 'Google Maps API Error: Request Denied. Your API key might be invalid or not enabled for the Places API.';
+          } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+            errorMsg = 'No polling locations found for this area. Try a broader search.';
+          } else if (status !== google.maps.places.PlacesServiceStatus.OK) {
+            errorMsg = `Google Maps Error: ${status}`;
+          }
+
           resolve({
             ok: false,
             data: null,
-            error: 'No locations found. Try a different search.',
+            error: errorMsg,
             status: 0,
           });
           return;

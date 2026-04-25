@@ -49,6 +49,9 @@
     "vitest": "^2.0.0"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@react-google-maps/api": "^2.20.8",
+    "axios": "^1.15.2",
     "three": "^0.167.0"
   }
 }

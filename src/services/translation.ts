@@ -8,6 +8,7 @@
 
 import { TranslationRequest, TranslationResponse } from '../types/index';
 import { store } from '../state/store';
+import axios from 'axios';
 
 export class ElectionTranslationService {
   private readonly baseUrl = 'https://translation.googleapis.com/language/translate/v2';
@@ -28,7 +29,7 @@ export class ElectionTranslationService {
    * @returns The translated text, or the original text if translation fails.
    */
   public async translateText(text: string, targetLanguage: string): Promise<string> {
-    const apiKey = import.meta.env.VITE_GOOGLE_TRANSLATION_API_KEY;
+    const apiKey = import.meta.env.VITE_GOOGLE_TRANSLATION_API_KEY || import.meta.env.VITE_GOOGLE_TRANSLATE_KEY;
     
     if (!apiKey) {
       console.warn('[ElectionSaathi] Translation API key is missing. Returning original text.');
@@ -42,19 +43,12 @@ export class ElectionTranslationService {
         format: 'html'
       };
 
-      const response = await fetch(`${this.baseUrl}?key=${apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await axios.post<TranslationResponse>(
+        `${this.baseUrl}?key=${apiKey}`,
+        requestBody
+      );
 
-      if (!response.ok) {
-        throw new Error(`Translation API error: ${response.status}`);
-      }
-
-      const data = await response.json() as TranslationResponse;
+      const data = response.data;
       
       if (data.data?.translations && data.data.translations.length > 0) {
         return data.data.translations[0].translatedText;
@@ -74,14 +68,14 @@ export class ElectionTranslationService {
    * @returns The translated texts.
    */
   public async translateBatch(texts: string[], targetLanguage: string): Promise<string[]> {
-    const apiKey = import.meta.env.VITE_GOOGLE_TRANSLATION_API_KEY;
+    const apiKey = import.meta.env.VITE_GOOGLE_TRANSLATION_API_KEY || import.meta.env.VITE_GOOGLE_TRANSLATE_KEY;
     
     if (!apiKey) {
       console.warn('[ElectionSaathi] Translation API key is missing. Returning original text.');
       return texts;
     }
 
-    if (texts.length === 0) return [];
+    if (texts.length === 0) {return [];}
 
     try {
       const requestBody: TranslationRequest = {
@@ -90,19 +84,12 @@ export class ElectionTranslationService {
         format: 'html'
       };
 
-      const response = await fetch(`${this.baseUrl}?key=${apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await axios.post<TranslationResponse>(
+        `${this.baseUrl}?key=${apiKey}`,
+        requestBody
+      );
 
-      if (!response.ok) {
-        throw new Error(`Translation API error: ${response.status}`);
-      }
-
-      const data = await response.json() as TranslationResponse;
+      const data = response.data;
       
       if (data.data?.translations && data.data.translations.length > 0) {
         return data.data.translations.map(t => t.translatedText);

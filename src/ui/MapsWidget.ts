@@ -23,6 +23,20 @@ export class MapsWidget {
   constructor() {
     this.maps = new ElectionMapsService();
     this.render();
+    this.initializeMap();
+  }
+
+  private async initializeMap(): Promise<void> {
+    const loaded = await this.maps.loadMapsApi();
+    if (loaded) {
+      const container = document.getElementById('maps-embed-container');
+      if (container) {
+        container.style.display = 'block';
+        container.style.height = '400px';
+        container.innerHTML = ''; // clear comment
+        this.maps.initMap('maps-embed-container');
+      }
+    }
   }
 
   /**
@@ -153,30 +167,41 @@ export class MapsWidget {
           .join('')}
       `;
 
-      // Show embed if API key available
+      // Show embed if API key available and native map isn't loaded
       if (embedContainer && this.maps.isConfigured()) {
-        const embedUrl = this.maps.generateMapsEmbedUrl(sanitised);
-        embedContainer.innerHTML = `
-          <iframe
-            src="${escapeHtml(embedUrl)}"
-            width="100%"
-            height="300"
-            style="border: 0; border-radius: var(--radius-md);"
-            allowfullscreen
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-            title="Google Maps showing polling locations near ${escapeHtml(sanitised)}"
-          ></iframe>
-        `;
-        embedContainer.style.display = 'block';
+        const isNativeMap = embedContainer.querySelector('.gm-style');
+        
+        if (!isNativeMap) {
+          const embedUrl = this.maps.generateMapsEmbedUrl(sanitised);
+          embedContainer.innerHTML = `
+            <iframe
+              src="${escapeHtml(embedUrl)}"
+              width="100%"
+              height="300"
+              style="border: 0; border-radius: var(--radius-md);"
+              allowfullscreen
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              title="Google Maps showing polling locations near ${escapeHtml(sanitised)}"
+            ></iframe>
+          `;
+          embedContainer.style.display = 'block';
+        } else {
+          embedContainer.style.display = 'block';
+        }
       }
 
       announce(`Found ${response.data.length} polling locations.`);
     } else {
       results.innerHTML = `
-        <p style="text-align: center; padding: var(--space-4); color: var(--text-muted);">
-          <a href="https://electoralsearch.eci.gov.in/" target="_blank" rel="noopener noreferrer" style="color: var(--navy); font-weight: 600; text-decoration: underline;">ECI Electoral Search</a>.
-        </p>
+        <div style="text-align: center; padding: var(--space-4); color: var(--text-muted);">
+          <p style="color: #ef4444; margin-bottom: var(--space-2); font-weight: 500;">
+            ⚠️ ${escapeHtml(response.error || 'Failed to find polling locations.')}
+          </p>
+          <p style="font-size: var(--text-sm);">
+            You can also try the official <a href="https://electoralsearch.eci.gov.in/" target="_blank" rel="noopener noreferrer" style="color: var(--navy); font-weight: 600; text-decoration: underline;">ECI Electoral Search</a>.
+          </p>
+        </div>
       `;
     }
   }

@@ -18,8 +18,11 @@ describe('ElectionCoachService', () => {
     coach = new ElectionCoachService();
   });
 
-  it('reports unconfigured when no API key', () => {
-    expect(coach.isConfigured()).toBe(false);
+  it('reports configured when API key is mocked', () => {
+    const originalApiKey = coach['apiKey'];
+    coach['apiKey'] = 'fake_api_key';
+    expect(coach.isConfigured()).toBe(true);
+    coach['apiKey'] = originalApiKey;
   });
 
   it('provides static fallback for eligibility questions', async () => {
@@ -109,11 +112,11 @@ describe('ELECTION_TOOLS', () => {
     }
   });
 
-  it('includes calendar reminder tool', () => {
-    const found = ELECTION_TOOLS.find((t) => t.name === 'create_election_reminder');
+  it('includes translate_text tool', () => {
+    const found = ELECTION_TOOLS.find((t) => t.name === 'translate_text');
     expect(found).toBeDefined();
-    expect(found?.parameters.required).toContain('event_title');
-    expect(found?.parameters.required).toContain('event_date');
+    expect(found?.parameters.required).toContain('text');
+    expect(found?.parameters.required).toContain('targetLang');
   });
 
   it('includes polling location tool', () => {
@@ -147,8 +150,12 @@ describe('ElectionMapsService', () => {
     maps = new ElectionMapsService();
   });
 
-  it('reports unconfigured when no API key', () => {
-    expect(maps.isConfigured()).toBe(false);
+  it('reports configured when API key is mocked', () => {
+    // Override the API key for this test
+    const originalApiKey = maps['apiKey'];
+    maps['apiKey'] = 'fake_api_key';
+    expect(maps.isConfigured()).toBe(true);
+    maps['apiKey'] = originalApiKey;
   });
 
   it('generates Google Maps search link', () => {

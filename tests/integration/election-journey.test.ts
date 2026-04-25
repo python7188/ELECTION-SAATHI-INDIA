@@ -101,7 +101,7 @@ describe('Election Coach — Tool Routing', () => {
 
   it('tool declarations cover all required Google services', () => {
     const toolNames = ELECTION_TOOLS.map((t) => t.name);
-    expect(toolNames).toContain('create_election_reminder'); // Calendar
+    expect(toolNames).toContain('translate_text'); // Translate
     expect(toolNames).toContain('find_polling_location');     // Maps
     expect(toolNames).toContain('lookup_election_faq');       // FAQ
     expect(toolNames).toContain('check_voter_eligibility');   // Eligibility

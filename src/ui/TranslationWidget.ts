@@ -22,7 +22,7 @@ export class TranslationWidget {
 
   private render(): void {
     const headerContainer = document.getElementById('header-translation-widget');
-    if (!headerContainer) return;
+    if (!headerContainer) {return;}
 
     const widget = document.createElement('div');
     widget.className = 'translation-widget';
@@ -47,12 +47,12 @@ export class TranslationWidget {
 
   private attachListeners(): void {
     const select = document.getElementById('lang-select') as HTMLSelectElement;
-    if (!select) return;
+    if (!select) {return;}
 
     select.addEventListener('change', async (e) => {
       const target = e.currentTarget as HTMLSelectElement;
       const lang = target.value;
-      if (!lang) return;
+      if (!lang) {return;}
       
       await this.handleTranslation(lang);
     });
@@ -65,7 +65,7 @@ export class TranslationWidget {
       return;
     }
 
-    if (this.currentLang === targetLang) return;
+    if (this.currentLang === targetLang) {return;}
     
     // UI update
     announce(`Translating page to ${targetLang}...`);
@@ -115,7 +115,7 @@ export class TranslationWidget {
           
           // Reset select box back to English to indicate failure
           const select = document.getElementById('lang-select') as HTMLSelectElement;
-          if (select) select.value = 'en';
+          if (select) {select.value = 'en';}
           this.currentLang = 'en';
           
           break; // Stop translating further chunks to avoid spam
