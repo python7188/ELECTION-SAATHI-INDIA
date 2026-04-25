@@ -226,7 +226,7 @@ export class AccessibleFallback {
     timeline.innerHTML = events
       .map(
         (event) => `
-      <div class="card" role="listitem" style="margin-bottom: var(--space-3); border-left: 3px solid ${event.priority === 'critical' ? 'var(--saffron)' : event.priority === 'high' ? 'var(--green-india)' : 'var(--border-subtle)'};">
+      <div class="card" role="listitem" style="margin-bottom: var(--space-3); border-left: 3px solid ${String(event.priority) === 'critical' ? 'var(--saffron)' : String(event.priority) === 'high' ? 'var(--green-india)' : 'var(--border-subtle)'};">
         <div style="display: flex; justify-content: space-between; align-items: start;">
           <h3 style="font-size: var(--text-lg); color: var(--navy);">${escapeHtml(event.title)}</h3>
           <span style="font-size: var(--text-xs); padding: var(--space-1) var(--space-2); border-radius: var(--radius-full); background: ${event.isDeadline ? 'var(--error)' : 'var(--bg-elevated)'}; color: ${event.isDeadline ? 'white' : 'var(--text-secondary)'};">

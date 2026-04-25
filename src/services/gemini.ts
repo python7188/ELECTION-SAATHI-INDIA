@@ -173,7 +173,7 @@ export class ElectionCoachService {
   private conversationHistory: CoachMessage[];
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GEMINI_KEY || '';
+    this.apiKey = String(import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GEMINI_KEY || '');
     this.model = import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-flash';
     this.client = new SafeApiClient({
       baseUrl: 'https://generativelanguage.googleapis.com',
@@ -325,6 +325,7 @@ export class ElectionCoachService {
    * @param query - User's question.
    * @returns Helpful static response.
    */
+  // eslint-disable-next-line complexity
   private getStaticResponse(query: string): string {
     const lower = query.toLowerCase();
 

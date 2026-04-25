@@ -23,7 +23,7 @@ export class MapsWidget {
   constructor() {
     this.maps = new ElectionMapsService();
     this.render();
-    this.initializeMap();
+    void this.initializeMap();
   }
 
   private async initializeMap(): Promise<void> {
@@ -123,6 +123,7 @@ export class MapsWidget {
    *
    * @param query - Search query.
    */
+  // eslint-disable-next-line max-lines-per-function
   private async handleSearch(query: string): Promise<void> {
     const sanitised = sanitizeFull(query, 200);
     const results = document.getElementById('maps-results');

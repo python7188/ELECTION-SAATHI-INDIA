@@ -29,9 +29,10 @@ export class ElectionTranslationService {
    * @returns The translated text, or the original text if translation fails.
    */
   public async translateText(text: string, targetLanguage: string): Promise<string> {
-    const apiKey = import.meta.env.VITE_GOOGLE_TRANSLATION_API_KEY || import.meta.env.VITE_GOOGLE_TRANSLATE_KEY;
+    const apiKey = String(import.meta.env.VITE_GOOGLE_TRANSLATION_API_KEY || import.meta.env.VITE_GOOGLE_TRANSLATE_KEY || '');
     
     if (!apiKey) {
+      // eslint-disable-next-line no-console
       console.warn('[ElectionSaathi] Translation API key is missing. Returning original text.');
       return text;
     }
@@ -56,6 +57,7 @@ export class ElectionTranslationService {
       
       return text;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('[ElectionSaathi] Translation failed:', error);
       return text; // Fallback to original
     }
@@ -68,9 +70,10 @@ export class ElectionTranslationService {
    * @returns The translated texts.
    */
   public async translateBatch(texts: string[], targetLanguage: string): Promise<string[]> {
-    const apiKey = import.meta.env.VITE_GOOGLE_TRANSLATION_API_KEY || import.meta.env.VITE_GOOGLE_TRANSLATE_KEY;
+    const apiKey = String(import.meta.env.VITE_GOOGLE_TRANSLATION_API_KEY || import.meta.env.VITE_GOOGLE_TRANSLATE_KEY || '');
     
     if (!apiKey) {
+      // eslint-disable-next-line no-console
       console.warn('[ElectionSaathi] Translation API key is missing. Returning original text.');
       return texts;
     }
@@ -97,6 +100,7 @@ export class ElectionTranslationService {
       
       return texts;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('[ElectionSaathi] Translation failed:', error);
       throw error;
     }

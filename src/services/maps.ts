@@ -33,7 +33,7 @@ export class ElectionMapsService {
   private isLoaded: boolean;
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_KEY || '';
+    this.apiKey = String(import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_KEY || '');
     this.cache = new ElectionCache<PollingLocation[]>({
       defaultTtlMs: 30 * 60 * 1000, // 30 minutes
       maxEntries: 20,

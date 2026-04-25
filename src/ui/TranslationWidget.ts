@@ -49,18 +49,19 @@ export class TranslationWidget {
     const select = document.getElementById('lang-select') as HTMLSelectElement;
     if (!select) {return;}
 
-    select.addEventListener('change', async (e) => {
+    select.addEventListener('change', (e) => {
       const target = e.currentTarget as HTMLSelectElement;
       const lang = target.value;
       if (!lang) {return;}
       
-      await this.handleTranslation(lang);
+      void this.handleTranslation(lang);
     });
   }
 
   private async handleTranslation(targetLang: string): Promise<void> {
     if (!store.getState().isTranslationLoaded) {
       announce('Translation API key is not configured. Falling back to English.');
+      // eslint-disable-next-line no-console
       console.warn('[ElectionSaathi] Translation API key missing.');
       return;
     }
@@ -110,6 +111,7 @@ export class TranslationWidget {
             }
           });
         } catch (e) {
+          // eslint-disable-next-line no-console
           console.error('[Translation] Batch failed', e);
           alert('Error: Translation failed. Your Google Cloud Translation API Key is invalid or not enabled. Check the developer console for details.');
           
