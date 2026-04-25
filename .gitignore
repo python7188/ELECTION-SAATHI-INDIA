@@ -98,3 +98,14 @@ yarn-error.log*
 # ===========================
 *.tgz
 *.map.bak
+
+# ===========================
+# Playwright
+# ===========================
+playwright-report/
+test-results/
+
+# ===========================
+# Vitest Artifacts
+# ===========================
+vitest.config.ts.timestamp-*

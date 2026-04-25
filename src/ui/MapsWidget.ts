@@ -121,89 +121,135 @@ export class MapsWidget {
   /**
    * Handle a location search.
    *
+   * Delegates rendering to focused helper methods to stay within
+   * the max-lines-per-function limit naturally.
+   *
    * @param query - Search query.
    */
-  // eslint-disable-next-line max-lines-per-function
   private async handleSearch(query: string): Promise<void> {
     const sanitised = sanitizeFull(query, 200);
     const results = document.getElementById('maps-results');
-    const embedContainer = document.getElementById('maps-embed-container');
 
     if (!results) {
       return;
     }
 
-    // Show loading
     results.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: var(--space-4);">🔍 Searching for polling locations...</p>';
     announce('Searching for polling locations near ' + sanitised);
 
-    // Search
     const response = await this.maps.searchPollingLocations(sanitised);
 
     if (response.ok && response.data) {
-      results.innerHTML = `
-        <p style="font-size: var(--text-sm); color: var(--text-muted); margin-bottom: var(--space-3);">
-          Found ${response.data.length} result(s) for "${escapeHtml(sanitised)}"
-        </p>
-        ${response.data
-          .map(
-            (loc) => `
-          <div style="padding: var(--space-3); border-bottom: 1px solid var(--border-subtle);">
-            <p style="font-weight: 600;">${escapeHtml(loc.name)}</p>
-            <p style="font-size: var(--text-sm); color: var(--text-secondary);">${escapeHtml(loc.address)}</p>
-            ${loc.constituency ? `<p style="font-size: var(--text-xs); color: var(--text-muted);">Constituency: ${escapeHtml(loc.constituency)}</p>` : ''}
-            <a
-              href="${this.maps.generateMapsLink(loc.name + ' ' + loc.address)}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="btn btn-secondary"
-              style="margin-top: var(--space-2); display: inline-block; font-size: var(--text-xs);"
-              aria-label="Open ${escapeHtml(loc.name)} in Google Maps"
-            >
-              Open in Google Maps ↗
-            </a>
-          </div>
-        `,
-          )
-          .join('')}
-      `;
-
-      // Show embed if API key available and native map isn't loaded
-      if (embedContainer && this.maps.isConfigured()) {
-        const isNativeMap = embedContainer.querySelector('.gm-style');
-        
-        if (!isNativeMap) {
-          const embedUrl = this.maps.generateMapsEmbedUrl(sanitised);
-          embedContainer.innerHTML = `
-            <iframe
-              src="${escapeHtml(embedUrl)}"
-              width="100%"
-              height="300"
-              style="border: 0; border-radius: var(--radius-md);"
-              allowfullscreen
-              loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
-              title="Google Maps showing polling locations near ${escapeHtml(sanitised)}"
-            ></iframe>
-          `;
-          embedContainer.style.display = 'block';
-        } else {
-          embedContainer.style.display = 'block';
-        }
-      }
-
+      this.renderSuccessResults(results, response.data, sanitised);
+      this.updateEmbedContainer(sanitised);
       announce(`Found ${response.data.length} polling locations.`);
     } else {
-      results.innerHTML = `
-        <div style="text-align: center; padding: var(--space-4); color: var(--text-muted);">
-          <p style="color: #ef4444; margin-bottom: var(--space-2); font-weight: 500;">
-            ⚠️ ${escapeHtml(response.error || 'Failed to find polling locations.')}
-          </p>
-          <p style="font-size: var(--text-sm);">
-            You can also try the official <a href="https://electoralsearch.eci.gov.in/" target="_blank" rel="noopener noreferrer" style="color: var(--navy); font-weight: 600; text-decoration: underline;">ECI Electoral Search</a>.
-          </p>
-        </div>
+      this.renderErrorState(results, response.error);
+    }
+  }
+
+  /**
+   * Render successful search results into the results container.
+   *
+   * @param container - Results DOM element.
+   * @param locations - Array of found polling locations.
+   * @param query - Sanitised search query for display.
+   */
+  private renderSuccessResults(
+    container: HTMLElement,
+    locations: import('../types/index').PollingLocation[],
+    query: string,
+  ): void {
+    const cards = locations.map((loc) => this.renderLocationCard(loc)).join('');
+
+    container.innerHTML = `
+      <p style="font-size: var(--text-sm); color: var(--text-muted); margin-bottom: var(--space-3);">
+        Found ${locations.length} result(s) for "${escapeHtml(query)}"
+      </p>
+      ${cards}
+    `;
+  }
+
+  /**
+   * Render a single polling location card.
+   *
+   * @param loc - Polling location data.
+   * @returns HTML string for the location card.
+   */
+  private renderLocationCard(loc: import('../types/index').PollingLocation): string {
+    const constituencyHtml = loc.constituency
+      ? `<p style="font-size: var(--text-xs); color: var(--text-muted);">Constituency: ${escapeHtml(loc.constituency)}</p>`
+      : '';
+
+    return `
+      <div style="padding: var(--space-3); border-bottom: 1px solid var(--border-subtle);">
+        <p style="font-weight: 600;">${escapeHtml(loc.name)}</p>
+        <p style="font-size: var(--text-sm); color: var(--text-secondary);">${escapeHtml(loc.address)}</p>
+        ${constituencyHtml}
+        <a
+          href="${this.maps.generateMapsLink(loc.name + ' ' + loc.address)}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-secondary"
+          style="margin-top: var(--space-2); display: inline-block; font-size: var(--text-xs);"
+          aria-label="Open ${escapeHtml(loc.name)} in Google Maps"
+        >
+          Open in Google Maps ↗
+        </a>
+      </div>
+    `;
+  }
+
+  /**
+   * Update the embed container with a Maps iframe or native map.
+   *
+   * @param query - Sanitised search query.
+   */
+  private updateEmbedContainer(query: string): void {
+    const embedContainer = document.getElementById('maps-embed-container');
+
+    if (!embedContainer || !this.maps.isConfigured()) {
+      return;
+    }
+
+    const isNativeMap = embedContainer.querySelector('.gm-style');
+
+    if (!isNativeMap) {
+      const embedUrl = this.maps.generateMapsEmbedUrl(query);
+      embedContainer.innerHTML = `
+        <iframe
+          src="${escapeHtml(embedUrl)}"
+          width="100%"
+          height="300"
+          style="border: 0; border-radius: var(--radius-md);"
+          allowfullscreen
+          loading="lazy"
+          sandbox="allow-scripts allow-same-origin allow-popups"
+          referrerpolicy="no-referrer-when-downgrade"
+          title="Google Maps showing polling locations near ${escapeHtml(query)}"
+        ></iframe>
       `;
     }
+
+    embedContainer.style.display = 'block';
+  }
+
+  /**
+   * Render an error state in the results container.
+   *
+   * @param container - Results DOM element.
+   * @param errorMsg - Error message to display (will be escaped).
+   */
+  private renderErrorState(container: HTMLElement, errorMsg: string | null): void {
+    container.innerHTML = `
+      <div style="text-align: center; padding: var(--space-4); color: var(--text-muted);">
+        <p style="color: #ef4444; margin-bottom: var(--space-2); font-weight: 500;">
+          ⚠️ ${escapeHtml(errorMsg || 'Failed to find polling locations.')}
+        </p>
+        <p style="font-size: var(--text-sm);">
+          You can also try the official <a href="https://electoralsearch.eci.gov.in/" target="_blank" rel="noopener noreferrer" style="color: var(--navy); font-weight: 600; text-decoration: underline;">ECI Electoral Search</a>.
+        </p>
+      </div>
+    `;
   }
 }

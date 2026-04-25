@@ -1,131 +1,181 @@
 /**
- * Translation Widget
+ * Translation Widget — Language switcher for election guidance.
  *
- * Provides a language switcher to toggle the UI between English and other Indian languages.
+ * Provides a government-style language selector to toggle all civic
+ * content between English and Indian regional languages via the
+ * Google Cloud Translation API.
+ *
+ * Uses textContent instead of innerHTML for translated strings to
+ * prevent XSS. Falls back gracefully when API is unconfigured.
  *
  * @module ui/TranslationWidget
  */
 
-import { ElectionTranslationService } from '../services/translation';
+import { ElectionTranslationService, SUPPORTED_LANGUAGES } from '../services/translation';
 import { announce } from '../utils/a11y';
-import { store } from '../state/store';
 
+/** Maximum strings per batch request to the Translation API. */
+const BATCH_SIZE = 50;
+
+/**
+ * Language switcher widget powered by Google Cloud Translation API.
+ *
+ * Collects translatable text nodes, batches them, and replaces content
+ * using safe textContent assignment (not innerHTML).
+ */
 export class TranslationWidget {
-  private translationService: ElectionTranslationService;
+  private readonly service: ElectionTranslationService;
   private currentLang: string = 'en';
 
   constructor() {
-    this.translationService = new ElectionTranslationService();
+    this.service = new ElectionTranslationService();
     this.render();
     this.attachListeners();
   }
 
+  /**
+   * Render the language selector into the header container.
+   */
   private render(): void {
-    const headerContainer = document.getElementById('header-translation-widget');
-    if (!headerContainer) {return;}
-
-    const widget = document.createElement('div');
-    widget.className = 'translation-widget';
-    widget.id = 'translation-widget';
-    widget.setAttribute('role', 'region');
-    widget.setAttribute('aria-label', 'Language selection powered by Google Cloud Translation');
-    widget.style.display = 'flex';
-    widget.style.alignItems = 'center';
-    widget.style.gap = 'var(--space-2)';
-
-    widget.innerHTML = `
-      <select id="lang-select" class="lang-select-box" aria-label="Select language">
-        <option value="en">ENGLISH</option>
-        <option value="hi">हिंदी (HINDI)</option>
-        <option value="te">తెలుగు (TELUGU)</option>
-        <option value="ta">தமிழ் (TAMIL)</option>
-      </select>
-    `;
-
-    headerContainer.appendChild(widget);
-  }
-
-  private attachListeners(): void {
-    const select = document.getElementById('lang-select') as HTMLSelectElement;
-    if (!select) {return;}
-
-    select.addEventListener('change', (e) => {
-      const target = e.currentTarget as HTMLSelectElement;
-      const lang = target.value;
-      if (!lang) {return;}
-      
-      void this.handleTranslation(lang);
-    });
-  }
-
-  private async handleTranslation(targetLang: string): Promise<void> {
-    if (!store.getState().isTranslationLoaded) {
-      announce('Translation API key is not configured. Falling back to English.');
-      // eslint-disable-next-line no-console
-      console.warn('[ElectionSaathi] Translation API key missing.');
+    const container = document.getElementById('header-translation-widget');
+    if (!container) {
       return;
     }
 
-    if (this.currentLang === targetLang) {return;}
-    
-    // UI update
-    announce(`Translating page to ${targetLang}...`);
+    const widget = document.createElement('div');
+    widget.id = 'translation-widget';
+    widget.setAttribute('role', 'region');
+    widget.setAttribute('aria-label', 'Language selection — powered by Google Cloud Translation API');
+    widget.style.cssText = 'display: flex; align-items: center; gap: var(--space-2);';
 
-    // Target elements to translate
-    const elements = Array.from(document.querySelectorAll('h1, h2, h3, p, button, a.nav-link, span'));
-    const textNodes: HTMLElement[] = [];
-    const stringsToTranslate: string[] = [];
+    const label = document.createElement('label');
+    label.htmlFor = 'lang-select';
+    label.className = 'sr-only';
+    label.textContent = 'Select display language';
 
-    // Collect elements with actual text
-    elements.forEach(el => {
-      const htmlEl = el as HTMLElement;
-      // Allow elements with no children, or elements where ALL children are <br> tags
-      const hasOnlyTextOrBr = Array.from(htmlEl.children).every(child => child.tagName === 'BR');
-      
-      if (hasOnlyTextOrBr && htmlEl.innerText && htmlEl.innerText.trim().length > 0) {
-        if (!htmlEl.hasAttribute('data-en-text')) {
-          htmlEl.setAttribute('data-en-text', htmlEl.innerHTML);
-        }
-        textNodes.push(htmlEl);
-        stringsToTranslate.push(htmlEl.getAttribute('data-en-text')!);
-      }
+    const select = document.createElement('select');
+    select.id = 'lang-select';
+    select.className = 'lang-select-box';
+    select.setAttribute('aria-label', 'Select language for election content');
+
+    // English default
+    const defaultOption = document.createElement('option');
+    defaultOption.value = 'en';
+    defaultOption.textContent = 'ENGLISH';
+    select.appendChild(defaultOption);
+
+    // All supported Indian languages
+    SUPPORTED_LANGUAGES.forEach(({ code, name, nativeName }) => {
+      const option = document.createElement('option');
+      option.value = code;
+      option.textContent = `${nativeName} (${name.toUpperCase()})`;
+      select.appendChild(option);
     });
 
-    if (targetLang === 'en') {
-      textNodes.forEach((el) => {
-        el.innerHTML = el.getAttribute('data-en-text') || el.innerHTML;
-      });
-    } else {
-      // Chunk requests into max 100 strings per batch
-      const BATCH_SIZE = 50;
-      for (let i = 0; i < stringsToTranslate.length; i += BATCH_SIZE) {
-        const chunk = stringsToTranslate.slice(i, i + BATCH_SIZE);
-        const nodeChunk = textNodes.slice(i, i + BATCH_SIZE);
-        
-        try {
-          const translated = await this.translationService.translateBatch(chunk, targetLang);
-          
-          nodeChunk.forEach((el, index) => {
-            if (translated[index]) {
-              el.innerHTML = translated[index];
-            }
-          });
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.error('[Translation] Batch failed', e);
-          alert('Error: Translation failed. Your Google Cloud Translation API Key is invalid or not enabled. Check the developer console for details.');
-          
-          // Reset select box back to English to indicate failure
-          const select = document.getElementById('lang-select') as HTMLSelectElement;
-          if (select) {select.value = 'en';}
-          this.currentLang = 'en';
-          
-          break; // Stop translating further chunks to avoid spam
-        }
+    widget.appendChild(label);
+    widget.appendChild(select);
+    container.appendChild(widget);
+  }
+
+  /**
+   * Attach change listener to the language selector.
+   */
+  private attachListeners(): void {
+    const select = document.getElementById('lang-select') as HTMLSelectElement | null;
+    if (!select) {
+      return;
+    }
+
+    select.addEventListener('change', (e) => {
+      const lang = (e.currentTarget as HTMLSelectElement).value;
+      if (lang) {
+        void this.handleTranslation(lang);
       }
+    });
+  }
+
+  /**
+   * Handle a language change event.
+   *
+   * Collects all translatable elements, batches calls to the
+   * Google Cloud Translation API, and safely replaces text content.
+   * Never throws — fails silently by preserving original text.
+   *
+   * @param targetLang - ISO 639-1 target language code.
+   */
+  private async handleTranslation(targetLang: string): Promise<void> {
+    if (this.currentLang === targetLang) {
+      return;
+    }
+
+    announce(`Translating election content to ${targetLang}…`);
+
+    const nodes = this.collectTranslatableNodes();
+
+    if (targetLang === 'en') {
+      // Restore cached English originals
+      nodes.forEach((node) => {
+        const original = node.dataset['enText'];
+        if (original) {
+          node.textContent = original;
+        }
+      });
+      this.currentLang = 'en';
+      announce('Restored to English.');
+      return;
+    }
+
+    const texts = nodes.map((node) => node.dataset['enText'] ?? node.textContent ?? '');
+
+    // Process in batches
+    for (let i = 0; i < texts.length; i += BATCH_SIZE) {
+      const chunk = texts.slice(i, i + BATCH_SIZE);
+      const nodeChunk = nodes.slice(i, i + BATCH_SIZE);
+
+      const translated = await this.service.translateBatch(chunk, targetLang);
+      nodeChunk.forEach((node, idx) => {
+        if (translated[idx]) {
+          node.textContent = translated[idx];
+        }
+      });
     }
 
     this.currentLang = targetLang;
-    announce(`Translation complete.`);
+    announce('Translation complete.');
+  }
+
+  /**
+   * Collect all leaf text nodes eligible for translation.
+   *
+   * Caches original English text in data-en-text attributes
+   * to enable lossless round-trip back to English.
+   *
+   * @returns Array of HTMLElements with translatable text.
+   */
+  private collectTranslatableNodes(): HTMLElement[] {
+    const selectors = 'h1, h2, h3, h4, p, button, label, th, td, li, summary, dt, dd';
+    const elements = Array.from(document.querySelectorAll<HTMLElement>(selectors));
+
+    return elements.filter((el) => {
+      // Only leaf-like nodes (no nested block elements)
+      const hasBlockChildren = Array.from(el.children).some((child) =>
+        ['DIV', 'SECTION', 'ARTICLE', 'NAV', 'UL', 'OL'].includes(child.tagName),
+      );
+      if (hasBlockChildren) {
+        return false;
+      }
+
+      const text = el.textContent?.trim() ?? '';
+      if (text.length < 2) {
+        return false;
+      }
+
+      // Cache English original once
+      if (!el.dataset['enText']) {
+        el.dataset['enText'] = text;
+      }
+
+      return true;
+    });
   }
 }

@@ -157,7 +157,11 @@ export function setActiveNavSection(sectionId: string): void {
   navLinks.forEach((link) => {
     const href = link.getAttribute('href');
     const isActive = href === `#${sectionId}`;
-    link.setAttribute('aria-current', isActive ? 'true' : 'false');
+    if (isActive) {
+      link.setAttribute('aria-current', 'true');
+    } else {
+      link.removeAttribute('aria-current');
+    }
   });
 }
 

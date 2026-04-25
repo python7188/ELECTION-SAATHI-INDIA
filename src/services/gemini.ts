@@ -2,7 +2,9 @@
  * Google Gemini / Vertex AI Integration — Election Coach reasoning layer.
  *
  * Handles conversational guidance, step-by-step tutoring, summarisation,
- * and tool-call orchestration (Calendar, Maps, FAQ routing).
+ * and tool-call orchestration (Translation, Maps, FAQ routing).
+ * Integrates with Google Cloud Natural Language API and Firestore
+ * analytics via the ElectionAnalyticsService.
  *
  * @module services/gemini
  */
@@ -15,6 +17,7 @@ import {
 } from '../types/index';
 import { sanitizeFull } from '../utils/sanitize';
 import { ElectionCache, makeCacheKey } from '../utils/cache';
+import { ElectionAnalyticsService } from './analytics';
 
 /* ---- Tool Declarations for Gemini Function Calling ---- */
 
@@ -157,6 +160,64 @@ Important rules:
 - Always encourage voters to verify information with official sources.
 - Respond in English, but understand and acknowledge Hindi terms when used.`;
 
+/* ---- Static Response Lookup Table ---- */
+
+/**
+ * Keyword matchers for static fallback responses.
+ *
+ * Each entry contains a list of keywords and a corresponding response.
+ * This replaces a complex if-else chain to stay within complexity limits.
+ */
+const STATIC_RESPONSE_MAP: readonly {
+  readonly keywords: readonly string[];
+  readonly response: string;
+}[] = [
+  {
+    keywords: ['eligib', 'can i vote', 'age'],
+    response:
+      'To vote in Indian elections, you must be an Indian citizen aged 18 or above on the qualifying date (January 1 of the revision year). You must be registered as a voter in your constituency. Check your status at nvsp.in or call the Voter Helpline at 1950.',
+  },
+  {
+    keywords: ['register', 'enrol', 'form 6'],
+    response:
+      "You can register to vote online at nvsp.in using Form 6, or through the Voter Helpline App. You'll need: Aadhaar, address proof, age proof, and a passport-sized photo. You can also visit your nearest Electoral Registration Office in person.",
+  },
+  {
+    keywords: ['evm', 'machine', 'vvpat'],
+    response:
+      'India uses Electronic Voting Machines (EVMs) with VVPAT paper trail verification. EVMs are standalone devices with no network connectivity — they cannot be hacked remotely. After you press the button, a VVPAT slip shows your choice for 7 seconds.',
+  },
+  {
+    keywords: ['nota'],
+    response:
+      'NOTA (None of the Above) has been available since 2013. If NOTA gets the most votes, the candidate with the next highest votes still wins. NOTA is a way to register dissatisfaction without invalidating your vote.',
+  },
+  {
+    keywords: ['booth', 'polling', 'where'],
+    response:
+      'Find your polling booth using: (1) Voter Helpline App, (2) nvsp.in with your EPIC number, (3) SMS "EPIC <number>" to 1950, or (4) the voter slip delivered by your BLO. Carry your Voter ID or any of the 12 approved photo IDs.',
+  },
+  {
+    keywords: ['lok sabha', 'parliament'],
+    response:
+      "Lok Sabha is the lower house of India's Parliament with 543 directly elected seats. Members are chosen by voters through FPTP (First Past the Post) voting. The term is 5 years. The majority party's leader becomes Prime Minister.",
+  },
+  {
+    keywords: ['panchayat', 'village', 'gram'],
+    response:
+      'Panchayat elections are conducted under the 73rd Amendment (1992) at three levels: Gram Panchayat (village), Panchayat Samiti (block), and Zila Parishad (district). They are managed by State Election Commissions and cover 29 subjects including water, roads, and health.',
+  },
+  {
+    keywords: ['municipal', 'city', 'nagar'],
+    response:
+      'Municipal elections govern urban areas under the 74th Amendment. Three tiers: Nagar Panchayat, Municipal Council, and Municipal Corporation. Elected councillors manage urban services like water supply, sanitation, roads, and planning.',
+  },
+] as const;
+
+/** Default welcome response when no keyword matches. */
+const DEFAULT_STATIC_RESPONSE =
+  'Welcome to Election Saathi India! I can help you with:\n• Checking voter eligibility\n• Registering to vote (Form 6)\n• Understanding EVMs and VVPAT\n• Finding your polling booth\n• Learning about Lok Sabha, Rajya Sabha, State Assembly, Panchayat, and Municipal elections\n• Election timelines and key deadlines\n\nAsk me anything about Indian elections, or visit eci.gov.in for official information!';
+
 /* ---- Gemini Client ---- */
 
 /**
@@ -164,23 +225,26 @@ Important rules:
  *
  * Manages conversation state, tool calling, response caching,
  * and graceful fallback when the API is unavailable.
+ * Integrates with Google Cloud Natural Language API for analytics.
  */
 export class ElectionCoachService {
   private readonly client: SafeApiClient;
   private readonly apiKey: string;
   private readonly model: string;
   private readonly cache: ElectionCache<string>;
+  private readonly analytics: ElectionAnalyticsService;
   private conversationHistory: CoachMessage[];
 
   constructor() {
     this.apiKey = String(import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GEMINI_KEY || '');
-    this.model = import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-flash';
+    this.model = String(import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-flash');
     this.client = new SafeApiClient({
       baseUrl: 'https://generativelanguage.googleapis.com',
       timeoutMs: 30000,
       retries: 1,
     });
     this.cache = new ElectionCache<string>({ defaultTtlMs: 10 * 60 * 1000, maxEntries: 50 });
+    this.analytics = new ElectionAnalyticsService();
     this.conversationHistory = [];
   }
 
@@ -205,6 +269,9 @@ export class ElectionCoachService {
   async chat(userMessage: string): Promise<CoachMessage> {
     const sanitised = sanitizeFull(userMessage, 2000);
     const cacheKey = makeCacheKey('coach', sanitised.toLowerCase().slice(0, 100));
+
+    // Track query with Google Cloud Natural Language API + Firestore analytics
+    void this.analytics.trackQuery(sanitised);
 
     // Check cache for identical recent queries
     const cached = this.cache.get(cacheKey);
@@ -322,46 +389,20 @@ export class ElectionCoachService {
   /**
    * Provide a static fallback response when Gemini is unavailable.
    *
+   * Uses a lookup table to match keywords to pre-written election guidance.
+   * This pure-function approach keeps cyclomatic complexity at 2 (well within limits).
+   *
    * @param query - User's question.
-   * @returns Helpful static response.
+   * @returns Helpful static response string.
    */
-  // eslint-disable-next-line complexity
   private getStaticResponse(query: string): string {
     const lower = query.toLowerCase();
 
-    if (lower.includes('eligib') || lower.includes('age') || lower.includes('can i vote')) {
-      return 'To vote in Indian elections, you must be an Indian citizen aged 18 or above on the qualifying date (January 1 of the revision year). You must be registered as a voter in your constituency. Check your status at nvsp.in or call the Voter Helpline at 1950.';
-    }
+    const match = STATIC_RESPONSE_MAP.find((entry) =>
+      entry.keywords.some((kw) => lower.includes(kw)),
+    );
 
-    if (lower.includes('register') || lower.includes('enrol') || lower.includes('form 6')) {
-      return 'You can register to vote online at nvsp.in using Form 6, or through the Voter Helpline App. You\'ll need: Aadhaar, address proof, age proof, and a passport-sized photo. You can also visit your nearest Electoral Registration Office in person.';
-    }
-
-    if (lower.includes('evm') || lower.includes('machine') || lower.includes('vvpat')) {
-      return 'India uses Electronic Voting Machines (EVMs) with VVPAT paper trail verification. EVMs are standalone devices with no network connectivity — they cannot be hacked remotely. After you press the button, a VVPAT slip shows your choice for 7 seconds.';
-    }
-
-    if (lower.includes('nota')) {
-      return 'NOTA (None of the Above) has been available since 2013. If NOTA gets the most votes, the candidate with the next highest votes still wins. NOTA is a way to register dissatisfaction without invalidating your vote.';
-    }
-
-    if (lower.includes('booth') || lower.includes('polling') || lower.includes('where')) {
-      return 'Find your polling booth using: (1) Voter Helpline App, (2) nvsp.in with your EPIC number, (3) SMS "EPIC <number>" to 1950, or (4) the voter slip delivered by your BLO. Carry your Voter ID or any of the 12 approved photo IDs.';
-    }
-
-    if (lower.includes('lok sabha') || lower.includes('parliament')) {
-      return 'Lok Sabha is the lower house of India\'s Parliament with 543 directly elected seats. Members are chosen by voters through FPTP (First Past the Post) voting. The term is 5 years. The majority party\'s leader becomes Prime Minister.';
-    }
-
-    if (lower.includes('panchayat') || lower.includes('village') || lower.includes('gram')) {
-      return 'Panchayat elections are conducted under the 73rd Amendment (1992) at three levels: Gram Panchayat (village), Panchayat Samiti (block), and Zila Parishad (district). They are managed by State Election Commissions and cover 29 subjects including water, roads, and health.';
-    }
-
-    if (lower.includes('municipal') || lower.includes('city') || lower.includes('nagar')) {
-      return 'Municipal elections govern urban areas under the 74th Amendment. Three tiers: Nagar Panchayat, Municipal Council, and Municipal Corporation. Elected councillors manage urban services like water supply, sanitation, roads, and planning.';
-    }
-
-    return 'Welcome to Election Saathi India! I can help you with:\n• Checking voter eligibility\n• Registering to vote (Form 6)\n• Understanding EVMs and VVPAT\n• Finding your polling booth\n• Learning about Lok Sabha, Rajya Sabha, State Assembly, Panchayat, and Municipal elections\n• Election timelines and key deadlines\n\nAsk me anything about Indian elections, or visit eci.gov.in for official information!';
+    return match?.response ?? DEFAULT_STATIC_RESPONSE;
   }
 
   /**

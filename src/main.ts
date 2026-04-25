@@ -5,8 +5,11 @@
  * 1. 3D WebGL election journey scene
  * 2. Accessible DOM fallback layer
  * 3. Election Coach (Gemini AI) panel
- * 4. Google Calendar reminder widget
+ * 4. Google Cloud Translation widget
  * 5. Google Maps polling location widget
+ * 6. Google Calendar election reminders widget
+ * 7. Google Cloud Natural Language API analytics
+ * 8. Vertex AI semantic FAQ search
  *
  * @module main
  */
@@ -16,6 +19,10 @@ import { AccessibleFallback } from './ui/AccessibleFallback';
 import { ElectionCoachPanel } from './ui/ElectionCoachPanel';
 import { TranslationWidget } from './ui/TranslationWidget';
 import { MapsWidget } from './ui/MapsWidget';
+import { CalendarWidget } from './ui/CalendarWidget';
+import { EligibilityCheckerWidget } from './ui/EligibilityCheckerWidget';
+import { ElectionAnalyticsService } from './services/analytics';
+import { ElectionVertexService } from './services/vertex';
 import { store } from './state/store';
 import { announce, onReducedMotionChange, prefersReducedMotion } from './utils/a11y';
 
@@ -46,7 +53,16 @@ function bootstrap(): void {
     console.warn('[ElectionSaathi] Accessible fallback failed to initialise:', e);
   }
 
-  // 2. 3D WebGL scene — progressive enhancement
+  init3DScene(appContainer);
+  initWidgets();
+  initCloudServices();
+  initListeners();
+}
+
+/**
+ * Initialize 3D scene (progressive enhancement).
+ */
+function init3DScene(appContainer: HTMLElement): void {
   const shouldEnable3D = !prefersReducedMotion() && supportsWebGL();
   if (shouldEnable3D) {
     try {
@@ -63,32 +79,61 @@ function bootstrap(): void {
     appContainer.style.display = 'none';
     appContainer.setAttribute('aria-hidden', 'true');
   }
+}
 
-  // 3. Election Coach panel (Gemini AI)
+/**
+ * Initialize all standard UI widgets.
+ */
+function initWidgets(): void {
+  const widgets = [
+    { name: 'Coach Panel', constructor: ElectionCoachPanel },
+    { name: 'Translation Widget', constructor: TranslationWidget },
+    { name: 'Maps Widget', constructor: MapsWidget },
+    { name: 'Calendar Widget', constructor: CalendarWidget },
+    { name: 'Eligibility Checker', constructor: EligibilityCheckerWidget },
+  ];
+
+  for (const { name, constructor } of widgets) {
+    try {
+      new constructor();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(`[ElectionSaathi] ${name} failed:`, e);
+    }
+  }
+}
+
+/**
+ * Initialize Google Cloud Analytics and Vertex services.
+ */
+function initCloudServices(): void {
   try {
-    new ElectionCoachPanel();
+    const analytics = new ElectionAnalyticsService();
+    if (analytics.isConfigured()) {
+      // eslint-disable-next-line no-console
+      console.info('[ElectionSaathi] Google Cloud Analytics (NL API + Firestore) active.');
+    }
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[ElectionSaathi] Coach panel failed:', e);
+    console.warn('[ElectionSaathi] Analytics service failed:', e);
   }
 
-  // 4. Translation widget
   try {
-    new TranslationWidget();
+    const vertex = new ElectionVertexService();
+    if (vertex.isConfigured()) {
+      // eslint-disable-next-line no-console
+      console.info('[ElectionSaathi] Vertex AI text-embedding service active.');
+    }
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[ElectionSaathi] Translation widget failed:', e);
+    console.warn('[ElectionSaathi] Vertex AI service failed:', e);
   }
+}
 
-  // 5. Maps widget
-  try {
-    new MapsWidget();
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('[ElectionSaathi] Maps widget failed:', e);
-  }
-
-  // Listen for reduced-motion changes
+/**
+ * Set up global event listeners.
+ */
+function initListeners(): void {
   onReducedMotionChange((reduced) => {
     store.setState({ isReducedMotion: reduced });
     if (reduced && scene) {

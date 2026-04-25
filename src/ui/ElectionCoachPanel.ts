@@ -8,7 +8,7 @@
  */
 
 import { ElectionCoachService } from '../services/gemini';
-import { sanitizeFull, escapeHtml } from '../utils/sanitize';
+import { sanitizeFull } from '../utils/sanitize';
 import { validateCoachQuery } from '../utils/validate';
 import { announce } from '../utils/a11y';
 
@@ -167,8 +167,12 @@ export class ElectionCoachPanel {
     const label = role === 'user' ? 'You' : '🏛️ Official Helpdesk';
     div.innerHTML = `
       <p style="color: var(--navy); font-weight: 600; margin-bottom: var(--space-1);">${label}</p>
-      <p style="color: var(--text-secondary); white-space: pre-wrap;">${escapeHtml(content)}</p>
+      <p class="message-content" style="color: var(--text-secondary); white-space: pre-wrap;"></p>
     `;
+    const p = div.querySelector('.message-content');
+    if (p) {
+      p.textContent = content;
+    }
 
     messages.appendChild(div);
     messages.scrollTop = messages.scrollHeight;
@@ -190,7 +194,7 @@ export class ElectionCoachPanel {
 
     const p = el.querySelector('p:last-child');
     if (p) {
-      p.innerHTML = escapeHtml(content);
+      p.textContent = content;
     }
   }
 }
