@@ -10,9 +10,9 @@ test.describe('Election Saathi India - E2E User Journey', () => {
     await expect(page).toHaveTitle(/Election Saathi India/i);
     
     // Assert main header is visible
-    const header = page.locator('header h1');
-    await expect(header).toBeVisible();
-    await expect(header).toHaveText(/Election Saathi India/i);
+    const headerText = page.locator('header .logo-text');
+    await expect(headerText).toBeVisible();
+    await expect(headerText).toHaveText(/Election Saathi India/i);
 
     // Verify accessible DOM is present
     const accessibleLayer = page.locator('#accessible-fallback');
