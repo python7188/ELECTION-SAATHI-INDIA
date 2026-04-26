@@ -28,6 +28,7 @@ const HTML_ESCAPE_REGEX = /[&<>"'/`]/g;
  * @returns HTML-safe string.
  */
 export function escapeHtml(input: string): string {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   return input.replace(HTML_ESCAPE_REGEX, (char) => HTML_ESCAPE_MAP[char as keyof typeof HTML_ESCAPE_MAP] as string);
 }
 

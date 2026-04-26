@@ -224,6 +224,7 @@ export class ElectionVertexService {
       return 0;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const dotProduct = a.reduce((sum, val, i) => sum + val * (b[i] as number), 0);
     const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
     const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));

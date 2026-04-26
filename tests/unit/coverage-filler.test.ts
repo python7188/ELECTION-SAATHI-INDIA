@@ -132,7 +132,7 @@ describe('Coverage Filler Tests', () => {
           },
           Marker: vi.fn(),
         },
-      };
+      } as any;
 
       // @ts-ignore
       const res = await service.searchWithPlacesApi('test query', 'cache-key-test');
@@ -165,7 +165,7 @@ describe('Coverage Filler Tests', () => {
             PlacesServiceStatus: { OK: 'OK', REQUEST_DENIED: 'REQUEST_DENIED', ZERO_RESULTS: 'ZERO_RESULTS' },
           },
         },
-      };
+      } as any;
 
       // @ts-ignore
       const res = await service.searchWithPlacesApi('test', 'cache-key');
@@ -194,7 +194,7 @@ describe('Coverage Filler Tests', () => {
             PlacesServiceStatus: { OK: 'OK', REQUEST_DENIED: 'REQUEST_DENIED', ZERO_RESULTS: 'ZERO_RESULTS' },
           },
         },
-      };
+      } as any;
 
       // @ts-ignore
       const res = await service.searchWithPlacesApi('test', 'cache-key');
@@ -223,7 +223,7 @@ describe('Coverage Filler Tests', () => {
             PlacesServiceStatus: { OK: 'OK', REQUEST_DENIED: 'REQUEST_DENIED', ZERO_RESULTS: 'ZERO_RESULTS' },
           },
         },
-      };
+      } as any;
 
       // @ts-ignore
       const res = await service.searchWithPlacesApi('test', 'cache-key');
@@ -417,25 +417,60 @@ describe('Coverage Filler Tests', () => {
       expect(service.cosineSimilarity([], [])).toBe(0);
     });
 
-    it('findRelevantFaq catches error and falls back to keywordFallback', async () => {
+    it('findRelevantFaq catches error and falls back to keywordFallback (hits line 186)', async () => {
       const service = new ElectionVertexService();
       // @ts-ignore
       service.apiKey = 'test-key';
       // @ts-ignore
-      vi.spyOn(service as any, 'embedText').mockRejectedValue(new Error('fail'));
+      vi.spyOn(service.client, 'post').mockRejectedValue(new Error('fail'));
       const res = await service.findRelevantFaq('test');
       expect(res).toBeNull();
     });
 
-    it('findRelevantFaq hits success path with mocked embeddings', async () => {
+    it('embedText parses successful response and finds matches (hits lines 209-210)', async () => {
       const service = new ElectionVertexService();
       // @ts-ignore
       service.apiKey = 'test-key';
-      // @ts-ignore — all embeddings return same vector → cosine = 1.0 > 0.5 threshold
-      vi.spyOn(service as any, 'embedText').mockResolvedValue([0.5, 0.8, 0.3]);
+      // Mock client.post to return a valid embedding vector
+      // @ts-ignore
+      vi.spyOn(service.client, 'post').mockResolvedValue({
+        ok: true,
+        data: {
+          predictions: [{ embeddings: { values: [0.5, 0.8, 0.3] } }],
+        },
+      } as any);
+      // We also mock the static CORPUS embeddings to be the same vector
+      // so the cosine similarity is 1.0 (which is > 0.5)
+      // @ts-ignore
+      service.FAQ_EMBEDDINGS = [[0.5, 0.8, 0.3]];
+      // @ts-ignore
       const res = await service.findRelevantFaq('eligibility');
       expect(res).not.toBeNull();
       expect(res!.score).toBeGreaterThan(0.5);
+    });
+
+    it('findRelevantFaq falls back if bestScore < 0.5 (hits lines 176-178)', async () => {
+      const service = new ElectionVertexService();
+      // @ts-ignore
+      service.apiKey = 'test-key';
+      
+      // Mock client.post to return [1,0,0] for the first call (query)
+      // and [0,1,0] for all subsequent calls (corpus)
+      // @ts-ignore
+      vi.spyOn(service.client, 'post')
+        .mockResolvedValueOnce({
+          ok: true,
+          data: { predictions: [{ embeddings: { values: [1.0, 0.0, 0.0] } }] },
+        } as any)
+        .mockResolvedValue({
+          ok: true,
+          data: { predictions: [{ embeddings: { values: [0.0, 1.0, 0.0] } }] },
+        } as any);
+
+      const res = await service.findRelevantFaq('completely irrelevant query xyz');
+      // Cosine similarity will be 0.0, so it hits bestScore < 0.5 and falls back to keyword match.
+      // Keyword match returns null for this query.
+      expect(res).toBeNull();
     });
   });
 
