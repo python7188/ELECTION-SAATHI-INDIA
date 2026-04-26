@@ -105,6 +105,10 @@ describe('sanitizeUrl', () => {
   it('returns empty string for non-string input', () => {
     expect(sanitizeUrl(123 as unknown as string)).toBe('');
   });
+
+  it('blocks invalid non-relative URLs', () => {
+    expect(sanitizeUrl('not-a-valid-url:')).toBe('');
+  });
 });
 
 describe('truncate', () => {

@@ -146,6 +146,11 @@ describe('validatePinCode', () => {
     expect(result.isValid).toBe(true);
     expect(result.sanitizedValue).toBe('400001');
   });
+
+  it('rejects non-string input', () => {
+    const result = validatePinCode(123456);
+    expect(result.isValid).toBe(false);
+  });
 });
 
 describe('validateEpicNumber', () => {
@@ -168,6 +173,11 @@ describe('validateEpicNumber', () => {
 
   it('rejects too short', () => {
     const result = validateEpicNumber('AB123');
+    expect(result.isValid).toBe(false);
+  });
+
+  it('rejects non-string input', () => {
+    const result = validateEpicNumber(12345);
     expect(result.isValid).toBe(false);
   });
 });
